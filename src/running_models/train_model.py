@@ -5,65 +5,106 @@ from data_preprocessing import DataPreprocessor
 from sklearn.metrics import f1_score, average_precision_score
 import matplotlib.pyplot as plt
 from sklearn.metrics import precision_recall_curve
+from constants import RANDOM_STATE
+from imblearn.over_sampling import SMOTE
+from imblearn.pipeline import Pipeline
+from typing import Optional
 
 
-data_preprocessor = DataPreprocessor(columns_to_normalise=[])
-X_train, X_test, y_train, y_test = data_preprocessor.run_preprocess()
+class XgboostModel:
+    def __init__(
+        self,
+        columns_to_normalise: Optional[list] = None,
+        use_smote: bool = False
+    ):
+        if columns_to_normalise is None:
+            columns_to_normalise = []
 
-param_grid = {
-    "n_estimators": [100, 300, 500],
-    "max_depth": [3, 5, 7],
-    "learning_rate": [0.01, 0.1, 0.2],
-    "subsample": [0.7, 0.8, 1.0],
-    "colsample_bytree": [0.7, 0.8, 1.0],
-    "gamma": [0, 0.1, 0.2]
-}
-
-xgb_clf = xgb.XGBClassifier(
-    objective="binary:logistic",
-    eval_metric="aucpr",
-    scale_pos_weight=y_train[y_train==0].shape[0]/ y_train[y_train == 1].shape[0] 
-    )
+        self.use_smote = use_smote
+        data_preprocessor = DataPreprocessor(columns_to_normalise=columns_to_normalise)
+        self.X_train, self.X_test, self.y_train, self.y_test = data_preprocessor.run_preprocess()
+        
 
 
-cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    def cross_validation(
+        self
+    ):
+        param_grid = {
+            "n_estimators": [100, 300, 500],
+            "max_depth": [3, 5, 7],
+            "learning_rate": [0.01, 0.1, 0.2],
+            "subsample": [0.7, 0.8, 1.0],
+            "colsample_bytree": [0.7, 0.8, 1.0],
+            "gamma": [0, 0.1, 0.2]
+        }
+        
+        weighting_kwarg = {}
+        if not self.use_smote:
+            weighting_kwarg = {
+                'scale_pos_weight':self.y_train[self.y_train==0].shape[0]/ self.y_train[self.y_train == 1].shape[0]
+            }
 
-random_search = RandomizedSearchCV(
-    estimator=xgb_clf,
-    param_distributions=param_grid,
-    n_iter=20, 
-    scoring="average_precision",
-    cv=cv,
-    verbose=1,
-    n_jobs=-1,
-    refit=True
-)
-
-search = random_search.fit(X_train, y_train)
-
-# Best parameters
-print("Best Hyperparameters:", random_search.best_params_)
+        xgb_clf = xgb.XGBClassifier(
+            objective="binary:logistic",
+            eval_metric="aucpr",
+            random_state=RANDOM_STATE,
+            **weighting_kwarg
+            )
 
 
-y_pred = search.best_estimator_.predict(X_test)
+        cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=RANDOM_STATE)
 
-f1 = f1_score(y_test, y_pred)
-print(f"F1-score: {f1:.4f}")
+        random_search = RandomizedSearchCV(
+            estimator=xgb_clf,
+            param_distributions=param_grid,
+            n_iter=20, 
+            scoring="average_precision",
+            cv=cv,
+            verbose=1,
+            n_jobs=-1,
+            refit=True,
+            random_state=RANDOM_STATE
+        )
+
+        search = random_search.fit(self.X_train, self.y_train)
+        return search
 
 
-y_pred_proba = [prob[1] for prob in search.best_estimator_.predict_proba(X_test)]
+    def reporting(
+        self,
+        search
+    ):
+        # Best parameters
+        print("Best Hyperparameters:", search.best_params_)
 
-# Compute AUC-PR (Precision-Recall AUC)
-auc_pr = average_precision_score(y_test, y_pred_proba)
-print(f"AUC-PR (Average Precision): {auc_pr:.4f}")
 
-precision, recall, _ = precision_recall_curve(y_test, y_pred_proba)
+        y_pred = search.best_estimator_.predict(self.X_test)
 
-plt.figure(figsize=(8, 6))
-plt.plot(recall, precision, marker='.', label=f"AUC-PR: {auc_pr:.4f}")
-plt.xlabel("Recall")
-plt.ylabel("Precision")
-plt.title("Precision-Recall Curve")
-plt.legend()
-plt.grid()
-plt.show()
+        f1 = f1_score(self.y_test, y_pred)
+        print(f"F1-score: {f1:.4f}")
+
+        weighted_f1 = f1_score(self.y_test, y_pred, average="weighted")
+        print(f"Weighted F1-score: {weighted_f1:.4f}")
+
+        y_pred_proba = [prob[1] for prob in search.best_estimator_.predict_proba(self.X_test)]
+
+        # Compute AUC-PR (Precision-Recall AUC)
+        auc_pr = average_precision_score(self.y_test, y_pred_proba)
+        print(f"AUC-PR (Average Precision): {auc_pr:.4f}")
+
+        precision, recall, _ = precision_recall_curve(self.y_test, y_pred_proba)
+
+        plt.figure(figsize=(8, 6))
+        plt.plot(recall, precision, marker='.', label=f"AUC-PR: {auc_pr:.4f}")
+        plt.xlabel("Recall")
+        plt.ylabel("Precision")
+        plt.title("Precision-Recall Curve")
+        plt.legend()
+        plt.grid()
+        plt.show()
+
+
+if __name__ == '__main__':
+    xgbm = XgboostModel()
+    search_result = xgbm.cross_validation()
+    xgbm.reporting(search_result)
