@@ -33,7 +33,6 @@ class XgboostModel:
             "n_estimators": [100, 300, 500],
             "max_depth": [3, 5, 7],
             "learning_rate": [0.01, 0.1, 0.2],
-            "subsample": [0.7, 0.8, 1.0],
             "colsample_bytree": [0.7, 0.8, 1.0],
             "gamma": [0, 0.1, 0.2]
         }
@@ -43,19 +42,26 @@ class XgboostModel:
             weighting_kwarg = {
                 'scale_pos_weight':self.y_train[self.y_train==0].shape[0]/ self.y_train[self.y_train == 1].shape[0]
             }
-
+            param_grid.update({"subsample": [0.7, 0.8, 1.0]})
+            
         xgb_clf = xgb.XGBClassifier(
             objective="binary:logistic",
             eval_metric="aucpr",
             random_state=RANDOM_STATE,
             **weighting_kwarg
-            )
-
+        )
+        
+        if self.use_smote:
+            pipeline_smote = Pipeline([
+            ("smote", SMOTE(sampling_strategy="auto", random_state=RANDOM_STATE)),
+            ("xgb", xgb_clf)
+            ])
+            param_grid = {'xgb__' + key: value for key, value in param_grid.items()}
 
         cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=RANDOM_STATE)
 
         random_search = RandomizedSearchCV(
-            estimator=xgb_clf,
+            estimator=pipeline_smote if self.use_smote else xgb_clf,
             param_distributions=param_grid,
             n_iter=20, 
             scoring="average_precision",
@@ -105,6 +111,25 @@ class XgboostModel:
 
 
 if __name__ == '__main__':
+    xgbm_smote = XgboostModel(use_smote=True)
+    search_result_smote = xgbm_smote.cross_validation()
+    best_score_smote = search_result_smote.best_score_
+    print(f'Best Score cross validation smote {best_score_smote:.4f}')
+    
     xgbm = XgboostModel()
     search_result = xgbm.cross_validation()
-    xgbm.reporting(search_result)
+    best_score_scaling = search_result.best_score_
+    print(f'Best Score cross validation scale_pos_weight {best_score_scaling:.4f}')
+    
+
+    
+    if best_score_scaling > best_score_smote:
+        xgbm.reporting(search_result)
+        print('then smote just for show')
+        xgbm_smote.reporting(search_result_smote)
+    else:
+        xgbm_smote.reporting(search_result_smote)
+        print('then scaling just for show')
+        xgbm.reporting(search_result)
+
+
