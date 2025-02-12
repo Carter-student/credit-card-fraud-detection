@@ -85,7 +85,6 @@ class XgboostModel:
         search,
         name='default'
     ):
-        # Best parameters
         logger.info("Best Hyperparameters:", search.best_params_)
 
 
@@ -109,11 +108,13 @@ class XgboostModel:
         plt.plot(recall, precision, marker='.', label=f"AUC-PR: {auc_pr:.4f}")
         plt.xlabel("Recall")
         plt.ylabel("Precision")
-        plt.title("Precision-Recall Curve")
+        plt.title(f"Precision-Recall Curve: {' '.join(name.split('_')).title()}")
         plt.legend()
         plt.grid()
-        plt.savefig(self.output_location / name + '.png'  , dpi=300)
-        plt.show()
+        
+        name += '.png'
+        plt.savefig(str(self.output_location / name)  , dpi=300)
+        # plt.show()
 
 
 if __name__ == '__main__':
@@ -128,12 +129,11 @@ if __name__ == '__main__':
     logger.info(f'Best Score cross validation scale_pos_weight {best_score_scaling:.4f}')
     
     if best_score_scaling > best_score_smote:
-        xgbm.reporting(search_result, name='scaling_method_auc')
+        xgbm.reporting(search_result, name='scaling_method_AUC')
         logger.info('then smote just for show')
-        xgbm_smote.reporting(search_result_smote, name='smote_method_auc')
+        xgbm_smote.reporting(search_result_smote, name='smote_method_AUC')
     else:
-        xgbm_smote.reporting(search_result_smote, name='scaling_method_auc')
+        xgbm_smote.reporting(search_result_smote, name='smote_method_AUC')
         logger.info('then scaling just for show')
-        xgbm.reporting(search_result, name='scaling_method_auc')
-
+        xgbm.reporting(search_result, name='scaling_method_AUC')
 
