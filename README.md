@@ -17,7 +17,7 @@ Once you've got the data in the right place you can train and test your model by
 - cd into src/running_models
 - you should be able to run  ```python train_model.py```
 
-**Note**: Figures should save to data/outputs so if you haven't made this file the code will.
+**Note**: Figures should save to data/outputs. To get a different result than that which I got you can change the RANDOM_STATE variable in src/running_models/constants.py.
 
 ## Room For Improvement
 - There is no feature seletion in this process which probably hampers performance. A proper solution would attempt to select appropriate features.
