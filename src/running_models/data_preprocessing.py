@@ -5,6 +5,7 @@ from sklearn.preprocessing import FunctionTransformer
 import os
 import numpy as np
 from loguru import logger
+from constants import ROOT, RANDOM_STATE
 from sklearn.model_selection import train_test_split
 
 
@@ -17,7 +18,7 @@ class DataPreprocessor:
         circular_time: Optional[int] = 3600,
         data_location: Optional[str] = 'data/creditcard.csv'
     ):
-        self.root = Path(__file__).parents[2]
+        self.root = ROOT
         self.data_location = self.root / data_location
         
         if columns_to_normalise is None:
@@ -74,7 +75,7 @@ class DataPreprocessor:
         X_train, X_test, y_train, y_test = train_test_split(df[non_target_columns], df[self.target_column],
                                                     stratify=df[self.target_column], 
                                                     test_size=self.test_size,
-                                                    random_state=25)
+                                                    random_state=RANDOM_STATE)
         logger.info('returning x and y')
 
         return X_train, X_test, y_train, y_test

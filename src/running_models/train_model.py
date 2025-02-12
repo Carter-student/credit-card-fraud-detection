@@ -1,14 +1,16 @@
 from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold
 import xgboost as xgb
+import os
 import numpy as np
 from data_preprocessing import DataPreprocessor
 from sklearn.metrics import f1_score, average_precision_score
 import matplotlib.pyplot as plt
 from sklearn.metrics import precision_recall_curve
-from constants import RANDOM_STATE
+from constants import RANDOM_STATE, ROOT
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline
 from typing import Optional
+from loguru import logger
 
 
 class XgboostModel:
@@ -24,7 +26,9 @@ class XgboostModel:
         data_preprocessor = DataPreprocessor(columns_to_normalise=columns_to_normalise)
         self.X_train, self.X_test, self.y_train, self.y_test = data_preprocessor.run_preprocess()
         
-
+        self.output_location = ROOT / "data" / "output"
+        if not os.path.exists(self.output_location):
+            os.makedirs(self.output_location)
 
     def cross_validation(
         self
@@ -78,25 +82,26 @@ class XgboostModel:
 
     def reporting(
         self,
-        search
+        search,
+        name='default'
     ):
         # Best parameters
-        print("Best Hyperparameters:", search.best_params_)
+        logger.info("Best Hyperparameters:", search.best_params_)
 
 
         y_pred = search.best_estimator_.predict(self.X_test)
 
         f1 = f1_score(self.y_test, y_pred)
-        print(f"F1-score: {f1:.4f}")
+        logger.info(f"F1-score: {f1:.4f}")
 
         weighted_f1 = f1_score(self.y_test, y_pred, average="weighted")
-        print(f"Weighted F1-score: {weighted_f1:.4f}")
+        logger.info(f"Weighted F1-score: {weighted_f1:.4f}")
 
         y_pred_proba = [prob[1] for prob in search.best_estimator_.predict_proba(self.X_test)]
 
         # Compute AUC-PR (Precision-Recall AUC)
         auc_pr = average_precision_score(self.y_test, y_pred_proba)
-        print(f"AUC-PR (Average Precision): {auc_pr:.4f}")
+        logger.info(f"AUC-PR (Average Precision): {auc_pr:.4f}")
 
         precision, recall, _ = precision_recall_curve(self.y_test, y_pred_proba)
 
@@ -107,6 +112,7 @@ class XgboostModel:
         plt.title("Precision-Recall Curve")
         plt.legend()
         plt.grid()
+        plt.savefig(self.output_location / name + '.png'  , dpi=300)
         plt.show()
 
 
@@ -114,22 +120,20 @@ if __name__ == '__main__':
     xgbm_smote = XgboostModel(use_smote=True)
     search_result_smote = xgbm_smote.cross_validation()
     best_score_smote = search_result_smote.best_score_
-    print(f'Best Score cross validation smote {best_score_smote:.4f}')
+    logger.info(f'Best Score cross validation smote {best_score_smote:.4f}')
     
     xgbm = XgboostModel()
     search_result = xgbm.cross_validation()
     best_score_scaling = search_result.best_score_
-    print(f'Best Score cross validation scale_pos_weight {best_score_scaling:.4f}')
-    
-
+    logger.info(f'Best Score cross validation scale_pos_weight {best_score_scaling:.4f}')
     
     if best_score_scaling > best_score_smote:
-        xgbm.reporting(search_result)
-        print('then smote just for show')
-        xgbm_smote.reporting(search_result_smote)
+        xgbm.reporting(search_result, name='scaling_method_auc')
+        logger.info('then smote just for show')
+        xgbm_smote.reporting(search_result_smote, name='smote_method_auc')
     else:
-        xgbm_smote.reporting(search_result_smote)
-        print('then scaling just for show')
-        xgbm.reporting(search_result)
+        xgbm_smote.reporting(search_result_smote, name='scaling_method_auc')
+        logger.info('then scaling just for show')
+        xgbm.reporting(search_result, name='scaling_method_auc')
 
 
