@@ -17,10 +17,13 @@ Once you've got the data in the right place you can train and test your model by
 - cd into src/running_models
 - you should be able to run  ```python train_model.py```
 
+**MAC users** newer versions of xgboost have issues with uv and mac architecture (I tested on an m2) you should run ```uv remove xgboost``` then run ```uv add xgboost==2.0.3``` your results might be different but I think it will run.
+
 **Note**: Figures should save to data/outputs. To get a different result than that which I got you can change the RANDOM_STATE variable in src/running_models/constants.py.
 
 ## Room For Improvement
 - There is no feature seletion in this process which probably hampers performance. A proper solution would attempt to select appropriate features.
 - Likewise there is no model selection process aside from me selecting between two methods of dealing with the data imbalance in the data.
+
 
 [uv_doc_link]: https://docs.astral.sh/uv/getting-started/installation/
