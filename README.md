@@ -17,7 +17,7 @@ Once you've got the data in the right place you can train and test your model by
 - cd into src/running_models
 - you should be able to run  ```python train_model.py```
 
-**MAC users** newer versions of xgboost have issues with uv and mac architecture (I tested on an m2) you should run ```uv remove xgboost``` then run ```uv add xgboost==2.0.3``` your results might be different but I think it will run.
+**MAC users** newer versions of xgboost have issues with uv and mac architecture (I tested on an m2) you should run ```uv remove xgboost``` then run ```uv add xgboost==2.0.3``` your results might be different. **UPDATE** The older verison of xgboost requires changes to the code which I have not implemented here 
 
 **Note**: Figures should save to data/outputs. To get a different result than that which I got you can change the RANDOM_STATE variable in src/running_models/constants.py.
 
