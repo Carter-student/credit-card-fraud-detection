@@ -79,4 +79,3 @@ class DataPreprocessor:
         logger.info('returning x and y')
 
         return X_train, X_test, y_train, y_test
-        
